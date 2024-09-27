@@ -17,16 +17,15 @@
 
 ```python
 class Node:
-    def __init__(self, state, parent, action):
+    def __init__(self, state, parent):
         self.state = state  # Current state of the node
         self.parent = parent  # Parent node
-        self.action = action  # Action taken to reach this node
 
 
 # Initial state: 3 missionaries, 3 cannibals, boat on starting side
-initialNode = Node((3, 3, 1), None, None)
+initialState = (3, 3, 1)
 # Goal state: 0 missionaries, 0 cannibals, boat on other side
-goalNode = Node((0, 0, 0), None, None)
+goalState = (0, 0, 0)
 ```
 
 ##  状态转移图
@@ -43,13 +42,10 @@ goalNode = Node((0, 0, 0), None, None)
 
 ```python
 def isValid(state):
-    if state[0] < 0 or state[1] < 0 or state[2] < 0:
+    m, c, _ = state  # Unpack state into m (missionaries) and c (cannibals)
+    if not (0 <= m <= 3 and 0 <= c <= 3):
         return False
-    if state[0] > 3 or state[1] > 3 or state[2] > 1:
-        return False
-    if state[0] > 0 and state[0] < state[1]:
-        return False
-    if state[0] < 3 and state[0] > state[1]:
+    if (m > 0 and m < c) or (m < 3 and m > c):
         return False
     return True
 
@@ -63,7 +59,7 @@ def successors(state):
         else:
             newState = (state[0] + move[0], state[1] + move[1], 1)
         if isValid(newState):
-            yield state[2], newState
+            yield newState
 ```
 
 ## 遍历状态图
@@ -76,19 +72,19 @@ paths = []
 
 
 # Perform DFS to find all paths to the goal node
-def findPathsDFS(node, goalNode):
-    if node.state == goalNode.state:
+def findPathsDFS(node, goalState):
+    if node.state == goalState:
         path = []
         while node is not None:
-            path.append((node.action, node.state))
+            path.append(node.state)
             node = node.parent
-        paths.append(path)
+        paths.append(path[::-1])
         return
     explored.add(node.state)
-    for action, state in successors(node.state):
-        newNode = Node(state, node, action)
+    for state in successors(node.state):
+        newNode = Node(state, node)
         if state not in explored:
-            findPathsDFS(newNode, goalNode)
+            findPathsDFS(newNode, goalState)
     explored.remove(node.state)
 ```
 
@@ -98,22 +94,24 @@ def findPathsDFS(node, goalNode):
 
 ```python
 def showResult():
-    findPathsDFS(initialNode, goalNode)
+    findPathsDFS(Node(initialState, None), goalState)
     if paths is None:
         print("No solution found.")
         return
     for index, path in enumerate(paths):
         print(f"Solution {index + 1}:")
         for i in range(1, len(path)):
-            action, state = path[i]
-            previousState = path[i - 1][1]
+            state = path[i]
+            previousState = path[i - 1]
             missionariesMoved = abs(state[0] - previousState[0])
             cannibalsMoved = abs(state[1] - previousState[1])
-            movement = "returns" if action == 0 else "crosses"
+            movement = "crosses" if state[2] == 0 else "returns"
             description = f"{missionariesMoved} missionaries and {cannibalsMoved} cannibals {movement}"
             print(f"\tState: {previousState} -> State: {state} with {description}.")
 ```
 
-结果如下所示，共搜索到4种解决方案。
+结果如下所示，分别展示 DFS 和 BFS 两种算法，共搜索到4种解决方案。
 
-![image-20240925113929894](.\image-20240925113929894.png)
+![image-20240925113929894](.\resultDFS.png)
+
+![image-20240925113929894](.\resultBFS.png)

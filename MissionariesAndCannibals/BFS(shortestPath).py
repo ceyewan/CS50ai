@@ -36,13 +36,10 @@ goalNode = Node((0, 0, 0), None, None)
 
 
 def isValid(state):
-    if state[0] < 0 or state[1] < 0 or state[2] < 0:
+    m, c, _ = state  # Unpack state into m (missionaries) and c (cannibals)
+    if not (0 <= m <= 3 and 0 <= c <= 3):
         return False
-    if state[0] > 3 or state[1] > 3 or state[2] > 3:
-        return False
-    if state[0] > 0 and state[0] < state[1]:
-        return False
-    if state[0] < 3 and state[0] > state[1]:
+    if (m > 0 and m < c) or (m < 3 and m > c):
         return False
     return True
 
