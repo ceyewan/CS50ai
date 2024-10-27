@@ -97,6 +97,33 @@ knowledge3 = And(
     Implication(CKnight, AKnight),
     Implication(CKnave, Not(AKnight))
 )
+"""
+knowledge3 = And(
+    # 基本规则：每个人只能是骑士或knave
+    Or(AKnight, AKnave),
+    Not(And(AKnight, AKnave)),
+    Or(BKnight, BKnave),
+    Not(And(BKnight, BKnave)),
+    Or(CKnight, CKnave),
+    Not(And(CKnight, CKnave)),
+
+    # A的陈述（A说自己是骑士或knave）
+    Implication(AKnight, Or(AKnight, AKnave)),
+    Implication(AKnave, Not(Or(AKnight, AKnave))),
+
+    # B的两个陈述
+    # 1. 关于A的陈述
+    Implication(BKnight, AKnave),
+    Implication(BKnave, Not(AKnave)),
+    # 2. 关于C的陈述
+    Implication(BKnight, CKnave),
+    Implication(BKnave, Not(CKnave)),
+
+    # C的陈述
+    Implication(CKnight, AKnight),
+    Implication(CKnave, Not(AKnight))
+)
+"""
 
 
 def main():
