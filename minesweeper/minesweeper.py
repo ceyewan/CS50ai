@@ -129,7 +129,6 @@ class Sentence():
             self.safes.update(self.cells)
             self.cells.clear()
 
-
     def mark_safe(self, cell):
         """
         Updates internal knowledge representation given the fact that
@@ -174,6 +173,7 @@ class MinesweeperAI():
         self.mines.add(cell)
         for sentence in self.knowledge:
             sentence.mark_mine(cell)
+            self.safes.update(sentence.known_safes())
 
     def mark_safe(self, cell):
         """
@@ -183,6 +183,7 @@ class MinesweeperAI():
         self.safes.add(cell)
         for sentence in self.knowledge:
             sentence.mark_safe(cell)
+            self.mines.update(sentence.known_mines())
 
     def add_knowledge(self, cell, count):
         """
@@ -199,26 +200,63 @@ class MinesweeperAI():
             5) add any new sentences to the AI's knowledge base
                if they can be inferred from existing knowledge
         """
+        # 1-2. 记录移动和安全格子
         self.moves_made.add(cell)
-        self.make_safe(cell)
-        dist = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1}, {0, 1}, {1, -1}, {1, 0}, {1, 1}}
+        self.mark_safe(cell)
+
+        # 3. 获取相邻格子集合
+        dist = [(-1, -1), (-1, 0), (-1, 1), (0, -1),
+                (0, 1), (1, -1), (1, 0), (1, 1)]
         cells = set()
         for i, j in dist:
             if 0 <= cell[0] + i < self.height and 0 <= cell[1] + j < self.width:
                 cells.add((cell[0] + i, cell[1] + j))
-        sentence = Sentence(cells, count)
-        self.knowledge.append(sentence)
-        for sentence in self.knowledge:
-            for cell in sentence.known_safes():
-                self.mark_safe(cell)
-            for cell in sentence.known_mines():
-                self.mark_mine(cell)
-        new_knowledge = []
-        for sentence1 in self.knowledge:
-            for sentence2 in self.knowledge:
-                if sentence1 != sentence2:
-                    if sentence1.cells.issubset(sentence2.cells):
-                        new_knowledge.append(Sentence(sentence2.cells - sentence1.cells, sentence2.count - sentence1.count))
+
+        # 移除已知的安全格子和地雷
+        cells = cells - self.safes - self.mines
+
+        # 4. 创建并添加新句子
+        if cells:  # 只在有未知格子时添加新句子
+            self.knowledge.append(Sentence(cells, count))
+
+        # 5. 标记安全格子和地雷
+        changed = True
+        while changed:  # 持续推理直到没有新发现
+            changed = False
+            # 处理所有句子中的已知信息
+            for sentence in self.knowledge:
+                safe_cells = sentence.known_safes()
+                mine_cells = sentence.known_mines()
+                # 如果 safe_cells 有不在 self.safes 中的格子，说明有新的安全格子
+                safe_cells = safe_cells - self.safes
+                if safe_cells:
+                    changed = True
+                    for cell in safe_cells:
+                        self.mark_safe(cell)
+                # 如果 mine_cells 有不在 self.mines 中的格子，说明有新的地雷
+                mine_cells = mine_cells - self.mines
+                if mine_cells:
+                    changed = True
+                    for cell in mine_cells:
+                        self.mark_mine(cell)
+
+            # 清理空句子和无效句子
+            self.knowledge = [
+                s for s in self.knowledge if s.cells and s.count >= 0]
+
+            # 6. 子集推理
+            new_knowledge = []
+            for sentence1 in self.knowledge:
+                for sentence2 in self.knowledge:
+                    if sentence1 != sentence2:
+                        if sentence1.cells.issubset(sentence2.cells):
+                            new_cells = sentence2.cells - sentence1.cells
+                            new_count = sentence2.count - sentence1.count
+                            if new_cells and (new_cells, new_count) not in [(s.cells, s.count) for s in self.knowledge]:
+                                new_knowledge.append(
+                                    Sentence(new_cells, new_count))
+                                changed = True
+            self.knowledge.extend(new_knowledge)
 
     def make_safe_move(self):
         """
@@ -229,10 +267,9 @@ class MinesweeperAI():
         This function may use the knowledge in self.mines, self.safes
         and self.moves_made, but should not modify any of those values.
         """
-        for sentence in self.knowledge:
-            for cell in sentence.known_safes():
-                if cell not in self.moves_made:
-                    return cell
+        for cell in self.safes:
+            if cell not in self.moves_made:
+                return cell
         return None
 
     def make_random_move(self):
@@ -244,6 +281,7 @@ class MinesweeperAI():
         """
         for i in range(self.height):
             for j in range(self.width):
+                print((i, j), self.moves_made, self.mines)
                 if (i, j) not in self.moves_made and (i, j) not in self.mines:
                     return (i, j)
         return None
